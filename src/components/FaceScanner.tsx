@@ -5,9 +5,15 @@ interface FaceScannerProps {
   isScanning: boolean;
   onScanComplete?: () => void;
   status?: "idle" | "scanning" | "success" | "error";
+  capturedImage?: string | null;
 }
 
-export const FaceScanner = ({ isScanning, onScanComplete, status = "idle" }: FaceScannerProps) => {
+export const FaceScanner = ({ 
+  isScanning, 
+  onScanComplete, 
+  status = "idle",
+  capturedImage 
+}: FaceScannerProps) => {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
@@ -41,10 +47,31 @@ export const FaceScanner = ({ isScanning, onScanComplete, status = "idle" }: Fac
         <div className="absolute inset-2 rounded-full border-2 border-primary pulse-ring" />
       )}
       
-      {/* Inner circle with gradient */}
+      {/* Inner circle with gradient or captured image */}
       <div className="absolute inset-4 rounded-full bg-gradient-to-br from-secondary to-muted overflow-hidden">
-        {/* Grid pattern */}
-        <div className="absolute inset-0 grid-bg opacity-50" />
+        {capturedImage ? (
+          <img 
+            src={capturedImage} 
+            alt="Face" 
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <>
+            {/* Grid pattern */}
+            <div className="absolute inset-0 grid-bg opacity-50" />
+            
+            {/* Center icon */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              {status === "success" ? (
+                <CheckCircle2 className="w-16 h-16 text-terminal fade-in" />
+              ) : status === "error" ? (
+                <AlertCircle className="w-16 h-16 text-destructive fade-in" />
+              ) : (
+                <Scan className={`w-16 h-16 ${isScanning ? "text-primary animate-pulse" : "text-muted-foreground"}`} />
+              )}
+            </div>
+          </>
+        )}
         
         {/* Scan line animation */}
         {isScanning && (
@@ -53,16 +80,18 @@ export const FaceScanner = ({ isScanning, onScanComplete, status = "idle" }: Fac
           </div>
         )}
         
-        {/* Center icon */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          {status === "success" ? (
-            <CheckCircle2 className="w-16 h-16 text-terminal fade-in" />
-          ) : status === "error" ? (
-            <AlertCircle className="w-16 h-16 text-destructive fade-in" />
-          ) : (
-            <Scan className={`w-16 h-16 ${isScanning ? "text-primary animate-pulse" : "text-muted-foreground"}`} />
-          )}
-        </div>
+        {/* Success/Error overlay on image */}
+        {capturedImage && (status === "success" || status === "error") && (
+          <div className={`absolute inset-0 flex items-center justify-center ${
+            status === "success" ? "bg-terminal/20" : "bg-destructive/20"
+          }`}>
+            {status === "success" ? (
+              <CheckCircle2 className="w-16 h-16 text-terminal fade-in" />
+            ) : (
+              <AlertCircle className="w-16 h-16 text-destructive fade-in" />
+            )}
+          </div>
+        )}
         
         {/* Scanlines overlay */}
         <div className="absolute inset-0 scanlines" />
