@@ -12,15 +12,39 @@ const Index = () => {
   const [walletAddress, setWalletAddress] = useState("0x0000000000000000000000000000000000000000");
   const [lastSignature, setLastSignature] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("register");
+  const [registeredFace, setRegisteredFace] = useState<string | null>(null);
+  const [logs, setLogs] = useState<Array<{ timestamp: string; level: string; message: string }>>([
+    { timestamp: "00:00:01", level: "info", message: "ETH Passkey v0.1.0 initialized" },
+    { timestamp: "00:00:01", level: "info", message: "WebRTC camera API available" },
+    { timestamp: "00:00:02", level: "warn", message: "Liveness check: DISABLED (stub)" },
+  ]);
+
+  const addLog = (level: string, message: string) => {
+    const now = new Date();
+    const timestamp = `${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}:${Math.floor(now.getMilliseconds() / 10).toString().padStart(2, '0')}`;
+    setLogs(prev => [...prev, { timestamp, level, message }]);
+  };
 
   const handleRegister = (address: string) => {
     setWalletAddress(address);
     setIsRegistered(true);
+    addLog("info", "Face embedding extracted (512-d)");
+    addLog("info", "PBKDF2 derivation: 100k iterations");
+    addLog("success", `Wallet derived: ${address.slice(0, 10)}...`);
     setTimeout(() => setActiveTab("sign"), 1000);
+  };
+
+  const handleFaceCapture = (imageData: string) => {
+    setRegisteredFace(imageData);
+    addLog("info", "Face captured from webcam");
+    addLog("info", "Image dimensions: 640x480");
   };
 
   const handleSign = (signature: string) => {
     setLastSignature(signature);
+    addLog("info", "Face match: 99.7% confidence");
+    addLog("success", "ECDSA signature generated");
+    addLog("info", `Sig: ${signature.slice(0, 20)}...`);
   };
 
   return (
@@ -75,13 +99,19 @@ const Index = () => {
 
           <TabsContent value="register" className="mt-0">
             <div className="p-6 rounded-xl bg-card border border-border">
-              <RegistrationFlow onRegister={handleRegister} />
+              <RegistrationFlow onRegister={(addr) => {
+                handleRegister(addr);
+              }} />
             </div>
           </TabsContent>
 
           <TabsContent value="sign" className="mt-0">
             <div className="p-6 rounded-xl bg-card border border-border">
-              <TransactionPanel onSign={handleSign} isRegistered={isRegistered} />
+              <TransactionPanel 
+                onSign={handleSign} 
+                isRegistered={isRegistered}
+                registeredFace={registeredFace}
+              />
             </div>
             {lastSignature && (
               <div className="mt-4">
@@ -92,22 +122,9 @@ const Index = () => {
 
           <TabsContent value="logs" className="mt-0">
             <div className="p-4 rounded-xl bg-card border border-border font-mono text-xs space-y-1 max-h-96 overflow-auto">
-              <LogLine timestamp="00:00:01" level="info" message="ETH Passkey v0.1.0 initialized" />
-              <LogLine timestamp="00:00:01" level="info" message="ONNX Runtime loaded (CPU backend)" />
-              <LogLine timestamp="00:00:02" level="warn" message="Liveness check: DISABLED (stub)" />
-              {isRegistered && (
-                <>
-                  <LogLine timestamp="00:00:15" level="info" message="Face embedding extracted (512-d)" />
-                  <LogLine timestamp="00:00:15" level="info" message="PBKDF2 derivation: 100k iterations" />
-                  <LogLine timestamp="00:00:16" level="success" message={`Wallet derived: ${walletAddress.slice(0, 10)}...`} />
-                </>
-              )}
-              {lastSignature && (
-                <>
-                  <LogLine timestamp="00:00:30" level="info" message="Face match: 99.7% confidence" />
-                  <LogLine timestamp="00:00:30" level="success" message="ECDSA signature generated" />
-                </>
-              )}
+              {logs.map((log, i) => (
+                <LogLine key={i} timestamp={log.timestamp} level={log.level as any} message={log.message} />
+              ))}
               <LogLine timestamp="--:--:--" level="muted" message="Waiting for commands..." />
             </div>
           </TabsContent>

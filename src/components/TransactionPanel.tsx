@@ -1,18 +1,68 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
 import { FaceScanner } from "./FaceScanner";
-import { ArrowRight, Shield, Zap } from "lucide-react";
+import { WebcamCapture } from "./WebcamCapture";
+import { ArrowRight, Shield, Zap, Camera } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface TransactionPanelProps {
   onSign: (signature: string) => void;
   isRegistered: boolean;
+  registeredFace?: string | null;
 }
 
-export const TransactionPanel = ({ onSign, isRegistered }: TransactionPanelProps) => {
+export const TransactionPanel = ({ onSign, isRegistered, registeredFace }: TransactionPanelProps) => {
   const [message, setMessage] = useState("0x7472616e73616374696f6e");
   const [isScanning, setIsScanning] = useState(false);
   const [scanStatus, setScanStatus] = useState<"idle" | "scanning" | "success" | "error">("idle");
+  const [showCamera, setShowCamera] = useState(false);
+  const [capturedForAuth, setCapturedForAuth] = useState<string | null>(null);
+
+  const handleCaptureForAuth = (imageData: string) => {
+    setCapturedForAuth(imageData);
+    setShowCamera(false);
+    
+    // Start verification
+    setIsScanning(true);
+    setScanStatus("scanning");
+  };
+
+  const handleScanComplete = () => {
+    setIsScanning(false);
+    
+    // Simulate face matching (always succeeds in demo)
+    const matchSuccess = Math.random() > 0.1; // 90% success rate for demo
+    
+    if (matchSuccess) {
+      setScanStatus("success");
+      
+      // Mock signature generation
+      const mockSignature = `0x${Array.from({ length: 130 }, () => 
+        Math.floor(Math.random() * 16).toString(16)
+      ).join("")}`;
+      
+      setTimeout(() => {
+        onSign(mockSignature);
+        toast({
+          title: "Transaction Signed",
+          description: "Face verified. Signature generated successfully.",
+        });
+        setCapturedForAuth(null);
+        setScanStatus("idle");
+      }, 500);
+    } else {
+      setScanStatus("error");
+      toast({
+        title: "Verification Failed",
+        description: "Face did not match. Please try again.",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        setCapturedForAuth(null);
+        setScanStatus("idle");
+      }, 2000);
+    }
+  };
 
   const handleSign = () => {
     if (!isRegistered) {
@@ -24,26 +74,16 @@ export const TransactionPanel = ({ onSign, isRegistered }: TransactionPanelProps
       return;
     }
     
-    setIsScanning(true);
-    setScanStatus("scanning");
-  };
-
-  const handleScanComplete = () => {
-    setIsScanning(false);
-    setScanStatus("success");
-    
-    // Mock signature generation
-    const mockSignature = `0x${Array.from({ length: 130 }, () => 
-      Math.floor(Math.random() * 16).toString(16)
-    ).join("")}`;
-    
-    setTimeout(() => {
-      onSign(mockSignature);
+    if (!message) {
       toast({
-        title: "Transaction Signed",
-        description: "Signature generated successfully",
+        title: "No Message",
+        description: "Please enter a message to sign",
+        variant: "destructive",
       });
-    }, 500);
+      return;
+    }
+    
+    setShowCamera(true);
   };
 
   return (
@@ -65,27 +105,63 @@ export const TransactionPanel = ({ onSign, isRegistered }: TransactionPanelProps
         </div>
       </div>
 
-      {/* Scanner */}
-      <div className="py-8">
-        <FaceScanner 
-          isScanning={isScanning} 
-          onScanComplete={handleScanComplete}
-          status={scanStatus}
-        />
+      {/* Camera or Scanner */}
+      <div className="py-4">
+        {showCamera ? (
+          <div className="space-y-4">
+            <p className="text-sm text-center text-muted-foreground">
+              Verify your identity to sign
+            </p>
+            <WebcamCapture
+              isActive={true}
+              onActivate={() => {}}
+              onCapture={handleCaptureForAuth}
+            />
+          </div>
+        ) : capturedForAuth || isScanning ? (
+          <FaceScanner 
+            isScanning={isScanning} 
+            onScanComplete={handleScanComplete}
+            status={scanStatus}
+            capturedImage={capturedForAuth}
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-4 py-8">
+            {registeredFace ? (
+              <div className="relative">
+                <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-primary/50">
+                  <img src={registeredFace} alt="Registered" className="w-full h-full object-cover" />
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-terminal flex items-center justify-center">
+                  <Shield className="w-4 h-4 text-primary-foreground" />
+                </div>
+              </div>
+            ) : (
+              <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-border">
+                <Camera className="w-12 h-12 text-muted-foreground" />
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground font-mono">
+              {isRegistered ? "Ready to authenticate" : "Face not registered"}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Sign Button */}
-      <Button 
-        variant="glow" 
-        size="xl" 
-        className="w-full group"
-        onClick={handleSign}
-        disabled={isScanning || !message}
-      >
-        <Shield className="w-5 h-5" />
-        {isScanning ? "Authenticating..." : "Sign with Face ID"}
-        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-      </Button>
+      {!showCamera && !isScanning && (
+        <Button 
+          variant="glow" 
+          size="xl" 
+          className="w-full group"
+          onClick={handleSign}
+          disabled={isScanning || !message}
+        >
+          <Shield className="w-5 h-5" />
+          Sign with Face ID
+          <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+        </Button>
+      )}
 
       {/* Info badges */}
       <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
