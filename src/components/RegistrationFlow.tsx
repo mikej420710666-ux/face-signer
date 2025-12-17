@@ -4,12 +4,14 @@ import { FaceScanner } from "./FaceScanner";
 import { WebcamCapture } from "./WebcamCapture";
 import { UserPlus, Check, AlertTriangle, ArrowRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { Chain } from "@/lib/chains";
 
 interface RegistrationFlowProps {
   onRegister: (address: string) => void;
+  chain: Chain;
 }
 
-export const RegistrationFlow = ({ onRegister }: RegistrationFlowProps) => {
+export const RegistrationFlow = ({ onRegister, chain }: RegistrationFlowProps) => {
   const [step, setStep] = useState<"intro" | "capture" | "processing" | "complete">("intro");
   const [isScanning, setIsScanning] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -65,8 +67,8 @@ export const RegistrationFlow = ({ onRegister }: RegistrationFlowProps) => {
           <div>
             <h3 className="text-xl font-semibold mb-2">Register Your Identity</h3>
             <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-              Your face becomes your private key. No seed phrases, no cloud storage. 
-              Everything stays on your device.
+              Your face becomes your private key for <span style={{ color: chain.color }}>{chain.name}</span>. 
+              No seed phrases, no cloud storage. Everything stays on your device.
             </p>
           </div>
           
@@ -124,7 +126,7 @@ export const RegistrationFlow = ({ onRegister }: RegistrationFlowProps) => {
           )}
           
           <p className="text-xs text-muted-foreground text-center font-mono">
-            512-d embedding extraction via InsightFace (simulated)
+            512-d embedding → {chain.curve === "ed25519" ? "Ed25519" : "secp256k1"} key derivation
           </p>
         </div>
       )}
@@ -145,7 +147,7 @@ export const RegistrationFlow = ({ onRegister }: RegistrationFlowProps) => {
             <p className="text-sm text-muted-foreground font-mono">
               {isScanning 
                 ? "Extracting 512-d face embedding" 
-                : "PBKDF2 → secp256k1 private key"}
+                : `PBKDF2 → ${chain.curve === "ed25519" ? "Ed25519" : "secp256k1"} private key`}
             </p>
           </div>
         </div>
@@ -159,7 +161,7 @@ export const RegistrationFlow = ({ onRegister }: RegistrationFlowProps) => {
           <div>
             <h3 className="text-xl font-semibold text-terminal mb-2">Registration Complete</h3>
             <p className="text-sm text-muted-foreground">
-              Your wallet is now linked to your biometric identity
+              Your <span style={{ color: chain.color }}>{chain.name}</span> wallet is now linked to your biometric identity
             </p>
           </div>
           

@@ -5,17 +5,20 @@ import { TransactionPanel } from "@/components/TransactionPanel";
 import { SignatureDisplay } from "@/components/SignatureDisplay";
 import { RegistrationFlow } from "@/components/RegistrationFlow";
 import { StatusBar } from "@/components/StatusBar";
-import { Fingerprint, PenTool, Terminal } from "lucide-react";
+import { ChainSelector } from "@/components/ChainSelector";
+import { SUPPORTED_CHAINS, Chain, generateMockAddress, generateMockSignature } from "@/lib/chains";
+import { Fingerprint, PenTool, Terminal, Layers } from "lucide-react";
 
 const Index = () => {
+  const [selectedChain, setSelectedChain] = useState<Chain>(SUPPORTED_CHAINS[0]);
   const [isRegistered, setIsRegistered] = useState(false);
   const [walletAddress, setWalletAddress] = useState("0x0000000000000000000000000000000000000000");
   const [lastSignature, setLastSignature] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("register");
   const [registeredFace, setRegisteredFace] = useState<string | null>(null);
   const [logs, setLogs] = useState<Array<{ timestamp: string; level: string; message: string }>>([
-    { timestamp: "00:00:01", level: "info", message: "ETH Passkey v0.1.0 initialized" },
-    { timestamp: "00:00:01", level: "info", message: "WebRTC camera API available" },
+    { timestamp: "00:00:01", level: "info", message: "FaceGate v0.2.0 initialized" },
+    { timestamp: "00:00:01", level: "info", message: "Multi-chain support: ETH, BASE, SOL, MATIC, ARB, AVAX" },
     { timestamp: "00:00:02", level: "warn", message: "Liveness check: DISABLED (stub)" },
   ]);
 
@@ -25,12 +28,25 @@ const Index = () => {
     setLogs(prev => [...prev, { timestamp, level, message }]);
   };
 
+  const handleChainChange = (chain: Chain) => {
+    setSelectedChain(chain);
+    addLog("info", `Switched to ${chain.name} (${chain.curve})`);
+    
+    // Regenerate address for new chain if registered
+    if (isRegistered) {
+      const newAddress = generateMockAddress(chain);
+      setWalletAddress(newAddress);
+      addLog("info", `Derived ${chain.shortName} address: ${newAddress.slice(0, 10)}...`);
+    }
+  };
+
   const handleRegister = (address: string) => {
-    setWalletAddress(address);
+    const chainAddress = generateMockAddress(selectedChain);
+    setWalletAddress(chainAddress);
     setIsRegistered(true);
     addLog("info", "Face embedding extracted (512-d)");
-    addLog("info", "PBKDF2 derivation: 100k iterations");
-    addLog("success", `Wallet derived: ${address.slice(0, 10)}...`);
+    addLog("info", `Key derivation: ${selectedChain.curve === "ed25519" ? "Ed25519" : "PBKDF2 → secp256k1"}`);
+    addLog("success", `${selectedChain.name} wallet derived: ${chainAddress.slice(0, 10)}...`);
     setTimeout(() => setActiveTab("sign"), 1000);
   };
 
@@ -41,16 +57,17 @@ const Index = () => {
   };
 
   const handleSign = (signature: string) => {
-    setLastSignature(signature);
+    const chainSig = generateMockSignature(selectedChain);
+    setLastSignature(chainSig);
     addLog("info", "Face match: 99.7% confidence");
-    addLog("success", "ECDSA signature generated");
-    addLog("info", `Sig: ${signature.slice(0, 20)}...`);
+    addLog("success", `${selectedChain.curve === "ed25519" ? "Ed25519" : "ECDSA"} signature generated`);
+    addLog("info", `Sig: ${chainSig.slice(0, 20)}...`);
   };
 
   return (
     <div className="min-h-screen bg-background">
       {/* Status Bar */}
-      <StatusBar isOnline={false} livenessCheck={false} />
+      <StatusBar isOnline={false} livenessCheck={false} chain={selectedChain} />
       
       {/* Main Content */}
       <div className="container max-w-2xl py-8 px-4">
@@ -61,15 +78,24 @@ const Index = () => {
               <Fingerprint className="w-7 h-7 text-primary-foreground" />
             </div>
             <div className="text-left">
-              <h1 className="text-2xl font-bold text-foreground">ETH Passkey</h1>
-              <p className="text-xs text-muted-foreground font-mono">v0.1.0 • MIT License</p>
+              <h1 className="text-2xl font-bold text-foreground">FaceGate</h1>
+              <p className="text-xs text-muted-foreground font-mono">v0.2.0 • Multi-Chain • MIT</p>
             </div>
           </div>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Biometric ECDSA signer — turn your face into an Ethereum wallet. 
+            Universal biometric signer — turn your face into a wallet for any chain. 
             No seed phrases. No cloud. Pure local signing.
           </p>
         </header>
+
+        {/* Chain Selector */}
+        <div className="mb-6">
+          <label className="block text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
+            <Layers className="w-3 h-3 inline mr-1" />
+            Select Chain
+          </label>
+          <ChainSelector selectedChain={selectedChain} onChainChange={handleChainChange} />
+        </div>
 
         {/* Wallet Card */}
         <div className="mb-8">
@@ -77,6 +103,7 @@ const Index = () => {
             address={walletAddress} 
             balance="0.000"
             isRegistered={isRegistered}
+            chain={selectedChain}
           />
         </div>
 
@@ -99,9 +126,10 @@ const Index = () => {
 
           <TabsContent value="register" className="mt-0">
             <div className="p-6 rounded-xl bg-card border border-border">
-              <RegistrationFlow onRegister={(addr) => {
-                handleRegister(addr);
-              }} />
+              <RegistrationFlow 
+                onRegister={handleRegister}
+                chain={selectedChain}
+              />
             </div>
           </TabsContent>
 
@@ -111,11 +139,12 @@ const Index = () => {
                 onSign={handleSign} 
                 isRegistered={isRegistered}
                 registeredFace={registeredFace}
+                chain={selectedChain}
               />
             </div>
             {lastSignature && (
               <div className="mt-4">
-                <SignatureDisplay signature={lastSignature} />
+                <SignatureDisplay signature={lastSignature} chain={selectedChain} />
               </div>
             )}
           </TabsContent>
@@ -132,8 +161,13 @@ const Index = () => {
 
         {/* Footer */}
         <footer className="mt-12 text-center text-xs text-muted-foreground font-mono space-y-2">
-          <p>ethpasskey sign --face selfie.jpg --msg 0x... → hex sig</p>
-          <p className="text-primary/60">Designed for Jetson Nano/Orin • Offline-First • ECDSA on secp256k1</p>
+          <p>facegate sign --chain {selectedChain.id} --face selfie.jpg --msg 0x...</p>
+          <p className="text-primary/60">
+            Multi-Chain: ETH • BASE • SOL • MATIC • ARB • AVAX
+          </p>
+          <p className="text-muted-foreground/50">
+            Offline-First • ECDSA (secp256k1) • Ed25519
+          </p>
         </footer>
       </div>
     </div>

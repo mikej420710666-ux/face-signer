@@ -1,11 +1,13 @@
 import { Wifi, WifiOff, Shield, Cpu } from "lucide-react";
+import { Chain } from "@/lib/chains";
 
 interface StatusBarProps {
   isOnline?: boolean;
   livenessCheck?: boolean;
+  chain?: Chain;
 }
 
-export const StatusBar = ({ isOnline = false, livenessCheck = false }: StatusBarProps) => {
+export const StatusBar = ({ isOnline = false, livenessCheck = false, chain }: StatusBarProps) => {
   return (
     <div className="flex items-center justify-between px-4 py-2 bg-card/50 border-b border-border text-xs font-mono">
       <div className="flex items-center gap-4">
@@ -26,11 +28,18 @@ export const StatusBar = ({ isOnline = false, livenessCheck = false }: StatusBar
             LIVENESS: {livenessCheck ? "ON" : "OFF"}
           </span>
         </div>
+
+        {chain && (
+          <div className="flex items-center gap-1.5">
+            <span style={{ color: chain.color }}>{chain.icon}</span>
+            <span style={{ color: chain.color }}>{chain.shortName}</span>
+          </div>
+        )}
       </div>
       
       <div className="flex items-center gap-1.5 text-primary">
         <Cpu className="w-3 h-3" />
-        <span>JETSON ORIN</span>
+        <span>EDGE DEVICE</span>
       </div>
     </div>
   );
