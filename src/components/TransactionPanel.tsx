@@ -4,14 +4,16 @@ import { FaceScanner } from "./FaceScanner";
 import { WebcamCapture } from "./WebcamCapture";
 import { ArrowRight, Shield, Zap, Camera } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { Chain } from "@/lib/chains";
 
 interface TransactionPanelProps {
   onSign: (signature: string) => void;
   isRegistered: boolean;
   registeredFace?: string | null;
+  chain: Chain;
 }
 
-export const TransactionPanel = ({ onSign, isRegistered, registeredFace }: TransactionPanelProps) => {
+export const TransactionPanel = ({ onSign, isRegistered, registeredFace, chain }: TransactionPanelProps) => {
   const [message, setMessage] = useState("0x7472616e73616374696f6e");
   const [isScanning, setIsScanning] = useState(false);
   const [scanStatus, setScanStatus] = useState<"idle" | "scanning" | "success" | "error">("idle");
